@@ -176,7 +176,9 @@ export async function GET(request: NextRequest) {
       { courses, total: courses.length },
       {
         headers: {
-          'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
+          'Cache-Control': search
+            ? 'no-store, no-cache, must-revalidate'
+            : 'public, s-maxage=300, stale-while-revalidate=3600',
         },
       }
     );

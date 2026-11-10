@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { LayoutGrid, GraduationCap, ChevronRight } from 'lucide-react';
 import { Category, Course } from './types';
 import NavContact from './NavContact';
+import { getCachedCourses, fetchCoursesForCategory } from '@/lib/courseCache';
 
 interface CourseMenuProps {
   categories: Category[];
@@ -98,8 +99,11 @@ export default function CourseMenu({
     if (!currentCategory?.slug) return;
     const catSlug = currentCategory.slug;
 
-    // Check if courses already loaded for this category
-    if (coursesByCat[catSlug] || (currentCategory.courses && currentCategory.courses.length > 0)) {
+    // If already in synchronous memory cache or populated in props, nothing to fetch
+    if (
+      getCachedCourses(catSlug) ||
+      (currentCategory.courses && currentCategory.courses.length > 0)
+    ) {
       return;
     }
 
@@ -108,17 +112,13 @@ export default function CourseMenu({
       if (isMounted) setLoadingCategory(catSlug);
     });
 
-    fetch(`/api/courses?category=${catSlug}`)
-      .then((res) => res.json())
-      .then((data) => {
+    fetchCoursesForCategory(catSlug)
+      .then((courses) => {
         if (!isMounted) return;
         setCoursesByCat((prev) => ({
           ...prev,
-          [catSlug]: data.courses || [],
+          [catSlug]: courses,
         }));
-      })
-      .catch((err) => {
-        console.error('Failed to load courses for category:', err);
       })
       .finally(() => {
         if (isMounted) setLoadingCategory(null);
@@ -127,10 +127,10 @@ export default function CourseMenu({
     return () => {
       isMounted = false;
     };
-  }, [currentCategory?.slug, coursesByCat, currentCategory?.courses]);
+  }, [currentCategory?.slug, currentCategory?.courses, coursesByCat]);
 
   const activeCourses = currentCategory
-    ? coursesByCat[currentCategory.slug] || currentCategory.courses || []
+    ? coursesByCat[currentCategory.slug] || getCachedCourses(currentCategory.slug) || currentCategory.courses || []
     : [];
 
   const isFetchingCourses =
@@ -191,7 +191,7 @@ export default function CourseMenu({
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-40 bg-black/25 backdrop-blur-[1px] flex justify-center pt-2 px-4 cursor-default overscroll-contain"
+      className="fixed inset-x-0 bottom-0 z-40 bg-black/35 flex justify-center pt-2 px-4 cursor-default overscroll-contain"
       style={{ top: `${topOffset}px` }}
       onClick={onClose}
       onMouseEnter={onMouseEnter}

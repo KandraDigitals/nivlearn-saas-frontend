@@ -5,6 +5,7 @@ import { BookOpen, ChevronRight } from 'lucide-react';
 import { useLeadModal } from '@/context/LeadModalContext';
 import type { Category, Course } from '@/components/Navbar/types';
 import { CategoryTabs, CourseCard, MobileCourseView } from './courses';
+import { getCachedCourses, fetchCoursesForCategory } from '@/lib/courseCache';
 
 export interface CoursesSectionProps {
     categories?: Category[];
@@ -69,23 +70,27 @@ export default function CoursesSection({
         const slug = selectedSlug || activeCategory?.slug;
         if (!slug) return;
 
-        if (coursesByCat[slug] || (activeCategory?.courses && activeCategory.courses.length > 0)) {
+        // If already in synchronous memory cache or populated in props, nothing to fetch
+        if (
+            getCachedCourses(slug) ||
+            (activeCategory?.courses && activeCategory.courses.length > 0)
+        ) {
             return;
         }
 
         let isMounted = true;
-        setLoadingSlug(slug);
+        queueMicrotask(() => {
+            if (isMounted) setLoadingSlug(slug);
+        });
 
-        fetch(`/api/courses?category=${slug}`)
-            .then((res) => res.json())
-            .then((data) => {
+        fetchCoursesForCategory(slug)
+            .then((courses) => {
                 if (!isMounted) return;
                 setCoursesByCat((prev) => ({
                     ...prev,
-                    [slug]: data.courses || [],
+                    [slug]: courses,
                 }));
             })
-            .catch((err) => console.error('Failed to load courses:', err))
             .finally(() => {
                 if (isMounted) setLoadingSlug(null);
             });
@@ -93,12 +98,17 @@ export default function CoursesSection({
         return () => {
             isMounted = false;
         };
-    }, [selectedSlug, activeCategory]);
+    }, [selectedSlug, activeCategory, coursesByCat]);
 
     const courses: Course[] = useMemo(() => {
         const slug = selectedSlug || activeCategory?.slug;
         if (!slug) return [];
-        return coursesByCat[slug] || activeCategory?.courses || [];
+        return (
+            coursesByCat[slug] ||
+            getCachedCourses(slug) ||
+            activeCategory?.courses ||
+            []
+        );
     }, [selectedSlug, activeCategory, coursesByCat]);
 
     const displayedCourses = useMemo(() => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import BrandLogo from '@/components/ui/BrandLogo';
 import { buttonClass } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import SearchBar from './SearchBar';
 import CourseMenu from './CourseMenu';
 import ResourcesMenu from './ResourcesMenu';
 import MobileMenu from './MobileMenu';
+import { prefetchCategoryCourses } from '@/lib/courseCache';
 
 interface NavbarClientProps {
     categories?: Category[];
@@ -28,28 +29,32 @@ export default function NavbarClient({ categories = [] }: NavbarClientProps) {
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
     const [topOffset, setTopOffset] = useState<number>(64);
 
-    // Dynamically calculate the bottom edge of the navbar so mega dropdowns align cleanly
-    // even when header ribbons are present, dismissed, or dynamic in height.
+    // Prefetch first category in background during browser idle time
+    useEffect(() => {
+        if (categories.length > 0 && categories[0]?.slug) {
+            prefetchCategoryCourses(categories[0].slug);
+        }
+    }, [categories]);
+
+    // Calculate exact bottom edge of navbar before opening dropdowns
+    const updateOffset = useCallback(() => {
+        if (navRef.current) {
+            const rect = navRef.current.getBoundingClientRect();
+            const bottom = Math.max(0, Math.round(rect.bottom));
+            setTopOffset((prev) => (prev !== bottom ? bottom : prev));
+        }
+    }, []);
+
     useEffect(() => {
         if (!activeMenu) return;
 
-        const updateOffset = () => {
-            if (navRef.current) {
-                const rect = navRef.current.getBoundingClientRect();
-                setTopOffset(Math.max(0, Math.round(rect.bottom)));
-            }
-        };
-
         updateOffset();
-
         window.addEventListener('resize', updateOffset);
-        window.addEventListener('scroll', updateOffset, { passive: true });
 
         return () => {
             window.removeEventListener('resize', updateOffset);
-            window.removeEventListener('scroll', updateOffset);
         };
-    }, [activeMenu]);
+    }, [activeMenu, updateOffset]);
 
     // Desktop hover handlers with smooth debounce
     const handleMouseEnter = (menu: 'courses' | 'resources') => {
@@ -57,6 +62,7 @@ export default function NavbarClient({ categories = [] }: NavbarClientProps) {
             clearTimeout(timeoutRef.current);
             timeoutRef.current = null;
         }
+        updateOffset();
         setActiveMenu(menu);
     };
 
@@ -139,7 +145,10 @@ export default function NavbarClient({ categories = [] }: NavbarClientProps) {
                                             type="button"
                                             onMouseEnter={() => handleMouseEnter('courses')}
                                             onMouseLeave={handleMouseLeave}
-                                            onClick={() => setActiveMenu(activeMenu === 'courses' ? null : 'courses')}
+                                            onClick={() => {
+                                                updateOffset();
+                                                setActiveMenu(activeMenu === 'courses' ? null : 'courses');
+                                            }}
                                             className={`rounded-md px-3 py-1.5 flex items-center gap-2 cursor-pointer transition-colors ${activeMenu === 'courses'
                                                 ? 'bg-prime text-on-dark shadow-xs'
                                                 : 'bg-prime-dark hover:bg-prime-dark/90 text-on-dark'

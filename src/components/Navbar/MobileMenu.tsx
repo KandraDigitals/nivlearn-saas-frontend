@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import BrandLogo from '@/components/ui/BrandLogo';
 import { X, ChevronDown, GraduationCap, ChevronRight, MessageSquare, Headphones } from 'lucide-react';
 import { Category } from './types';
 import { COMPANY_LINKS, RESOURCE_LINKS } from './navLinks';
+import { getCachedCourses, fetchCoursesForCategory } from '@/lib/courseCache';
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -28,39 +29,7 @@ export default function MobileMenu({ isOpen, onClose, categories }: MobileMenuPr
   const [coursesByCat, setCoursesByCat] = useState<Record<string, Category['courses']>>({});
   const [loadingCategory, setLoadingCategory] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isOpen || !expandedCategory) return;
-    const cat = categories.find((c) => c.slug === expandedCategory);
-    if (!cat) return;
-
-    if (coursesByCat[expandedCategory] || (cat.courses && cat.courses.length > 0)) {
-      return;
-    }
-
-    let isMounted = true;
-    queueMicrotask(() => {
-      if (isMounted) setLoadingCategory(expandedCategory);
-    });
-
-    fetch(`/api/courses?category=${expandedCategory}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (!isMounted) return;
-        setCoursesByCat((prev) => ({
-          ...prev,
-          [expandedCategory]: data.courses || [],
-        }));
-      })
-      .catch((err) => console.error('Failed to load courses:', err))
-      .finally(() => {
-        if (isMounted) setLoadingCategory(null);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [isOpen, expandedCategory, categories, coursesByCat]);
-
+  // Lock body scroll when drawer is open
   useEffect(() => {
     if (!isOpen) return;
 
@@ -72,8 +41,52 @@ export default function MobileMenu({ isOpen, onClose, categories }: MobileMenuPr
     };
   }, [isOpen]);
 
+  // Safe on-demand course fetch using shared global cache
+  const fetchCategoryCourses = useCallback(async (slug: string) => {
+    if (!slug) return;
+
+    // If already in synchronous memory cache or populated in props, nothing to fetch
+    if (getCachedCourses(slug)) return;
+
+    const cat = categories.find((c) => c.slug === slug);
+    if (cat?.courses && cat.courses.length > 0) return;
+
+    setLoadingCategory(slug);
+
+    try {
+      const courses = await fetchCoursesForCategory(slug);
+      setCoursesByCat((prev) => ({
+        ...prev,
+        [slug]: courses,
+      }));
+    } finally {
+      setLoadingCategory((curr) => (curr === slug ? null : curr));
+    }
+  }, [categories]);
+
+  // If first category opened by default when drawer is shown, load its courses asynchronously if not cached
+  useEffect(() => {
+    if (!isOpen || !expandedCategory) return;
+    if (getCachedCourses(expandedCategory)) return;
+
+    let isMounted = true;
+    queueMicrotask(() => {
+      if (isMounted) {
+        fetchCategoryCourses(expandedCategory);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, expandedCategory, fetchCategoryCourses]);
+
   const toggleCategory = (slug: string) => {
-    setExpandedCategory(expandedCategory === slug ? null : slug);
+    const next = expandedCategory === slug ? null : slug;
+    setExpandedCategory(next);
+    if (next) {
+      fetchCategoryCourses(next);
+    }
   };
 
   return (
@@ -81,17 +94,17 @@ export default function MobileMenu({ isOpen, onClose, categories }: MobileMenuPr
       className={`fixed inset-0 z-50 lg:hidden transition-all duration-300 ${isOpen ? 'visible pointer-events-auto' : 'invisible pointer-events-none'
         }`}
     >
-      {/* Backdrop with smooth fade */}
+      {/* Backdrop with smooth fade (no backdrop-blur to avoid mobile GPU stutter/thermal throttling) */}
       <div
-        className={`fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity duration-300 ease-in-out ${isOpen ? 'opacity-100' : 'opacity-0'
+        className={`fixed inset-0 bg-black/60 transition-opacity duration-300 ease-in-out ${isOpen ? 'opacity-100' : 'opacity-0'
           }`}
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Drawer with smooth slide-in from left */}
+      {/* Drawer with smooth hardware-accelerated slide-in from left */}
       <div
-        className={`fixed inset-y-0 left-0 w-full max-w-[320px] sm:max-w-sm bg-white shadow-2xl flex flex-col z-10 transition-transform duration-300 ease-out transform ${isOpen ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed inset-y-0 left-0 w-full max-w-[320px] sm:max-w-sm bg-white shadow-2xl flex flex-col z-10 transition-transform duration-300 ease-out will-change-transform transform ${isOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
       >
         {/* Header */}
@@ -118,7 +131,12 @@ export default function MobileMenu({ isOpen, onClose, categories }: MobileMenuPr
             >
               <div className="flex items-center gap-2">
                 <GraduationCap className="text-prime text-base" size={18} />
-                <span>Explore All Courses ({categories.reduce((acc, c) => acc + (c.courses?.length || 0), 0)})</span>
+                <span>Explore All Courses</span>
+                {categories.length > 0 && (
+                  <span className="text-[10px] text-zinc-500 font-normal">
+                    ({categories.length} {categories.length === 1 ? 'Category' : 'Categories'})
+                  </span>
+                )}
               </div>
               <ChevronDown
                 size={18}
@@ -130,7 +148,11 @@ export default function MobileMenu({ isOpen, onClose, categories }: MobileMenuPr
               <div className="divide-y divide-zinc-100 border-t border-zinc-200">
                 {categories.map((category) => {
                   const isExpanded = expandedCategory === category.slug;
-                  const activeCategoryCourses = coursesByCat[category.slug] || category.courses || [];
+                  const activeCategoryCourses =
+                    coursesByCat[category.slug] ||
+                    getCachedCourses(category.slug) ||
+                    category.courses ||
+                    [];
                   const isFetchingCategory = loadingCategory === category.slug;
 
                   return (

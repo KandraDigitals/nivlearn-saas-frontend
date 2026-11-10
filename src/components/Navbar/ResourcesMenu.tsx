@@ -57,7 +57,7 @@ export default function ResourcesMenu({
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-40 bg-black/25 backdrop-blur-[1px] flex justify-center pt-2 px-4 cursor-default overscroll-contain"
+      className="fixed inset-x-0 bottom-0 z-40 bg-black/35 flex justify-center pt-2 px-4 cursor-default overscroll-contain"
       style={{ top: `${topOffset}px` }}
       onClick={onClose}
       onMouseEnter={onMouseEnter}
