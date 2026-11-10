@@ -215,7 +215,7 @@ export default function NavbarClient({ categories = [] }: NavbarClientProps) {
                                             setIsMobileSearchOpen(true);
                                         }}
                                         aria-label="Search courses"
-                                        className="p-2 rounded-lg text-prime-dark hover:bg-sec-prime cursor-pointer"
+                                        className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-prime-dark hover:bg-sec-prime active:scale-95 transition-all touch-manipulation cursor-pointer"
                                     >
                                         <Search size={20} />
                                     </button>
@@ -224,7 +224,7 @@ export default function NavbarClient({ categories = [] }: NavbarClientProps) {
                                         type="button"
                                         onClick={() => setIsMobileOpen(true)}
                                         aria-label="Open menu"
-                                        className="p-2 rounded-lg text-prime-dark hover:bg-sec-prime cursor-pointer"
+                                        className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-prime-dark hover:bg-sec-prime active:scale-95 transition-all touch-manipulation cursor-pointer"
                                     >
                                         <Menu size={22} />
                                     </button>

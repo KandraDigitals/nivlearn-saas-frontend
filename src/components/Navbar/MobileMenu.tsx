@@ -23,9 +23,7 @@ const NAV_GROUPS = [
 
 export default function MobileMenu({ isOpen, onClose, categories }: MobileMenuProps) {
   const [isCoursesOpen, setIsCoursesOpen] = useState(true);
-  const [expandedCategory, setExpandedCategory] = useState<string | null>(
-    categories[0]?.slug ?? null
-  );
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [coursesByCat, setCoursesByCat] = useState<Record<string, Category['courses']>>({});
   const [loadingCategory, setLoadingCategory] = useState<string | null>(null);
 
@@ -40,6 +38,11 @@ export default function MobileMenu({ isOpen, onClose, categories }: MobileMenuPr
       document.body.style.overflow = originalOverflow;
     };
   }, [isOpen]);
+
+  const handleClose = () => {
+    setExpandedCategory(null);
+    onClose();
+  };
 
   // Safe on-demand course fetch using shared global cache
   const fetchCategoryCourses = useCallback(async (slug: string) => {
@@ -64,23 +67,6 @@ export default function MobileMenu({ isOpen, onClose, categories }: MobileMenuPr
     }
   }, [categories]);
 
-  // If first category opened by default when drawer is shown, load its courses asynchronously if not cached
-  useEffect(() => {
-    if (!isOpen || !expandedCategory) return;
-    if (getCachedCourses(expandedCategory)) return;
-
-    let isMounted = true;
-    queueMicrotask(() => {
-      if (isMounted) {
-        fetchCategoryCourses(expandedCategory);
-      }
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [isOpen, expandedCategory, fetchCategoryCourses]);
-
   const toggleCategory = (slug: string) => {
     const next = expandedCategory === slug ? null : slug;
     setExpandedCategory(next);
@@ -91,31 +77,36 @@ export default function MobileMenu({ isOpen, onClose, categories }: MobileMenuPr
 
   return (
     <div
-      className={`fixed inset-0 z-50 lg:hidden transition-all duration-300 ${isOpen ? 'visible pointer-events-auto' : 'invisible pointer-events-none'
-        }`}
+      className={`fixed inset-0 z-50 lg:hidden ${
+        isOpen
+          ? 'visible pointer-events-auto'
+          : 'invisible pointer-events-none transition-[visibility] duration-300'
+      }`}
     >
       {/* Backdrop with smooth fade (no backdrop-blur to avoid mobile GPU stutter/thermal throttling) */}
       <div
-        className={`fixed inset-0 bg-black/60 transition-opacity duration-300 ease-in-out ${isOpen ? 'opacity-100' : 'opacity-0'
-          }`}
-        onClick={onClose}
+        className={`fixed inset-0 bg-black/60 transition-opacity duration-300 ease-in-out ${
+          isOpen ? 'opacity-100' : 'opacity-0'
+        }`}
+        onClick={handleClose}
         aria-hidden="true"
       />
 
-      {/* Drawer with smooth hardware-accelerated slide-in from left */}
+      {/* Drawer with smooth 3D hardware-accelerated slide-in from left */}
       <div
-        className={`fixed inset-y-0 left-0 w-full max-w-[320px] sm:max-w-sm bg-white shadow-2xl flex flex-col z-10 transition-transform duration-300 ease-out will-change-transform transform ${isOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
+        className={`fixed inset-y-0 left-0 w-full max-w-[320px] sm:max-w-sm bg-white shadow-2xl flex flex-col z-10 transition-transform duration-300 ease-out transform-gpu will-change-transform ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3.5 border-b border-zinc-100 bg-white flex-shrink-0">
-          <Link href="/" onClick={onClose}>
+          <Link href="/" onClick={handleClose}>
             <BrandLogo className="h-7" />
           </Link>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="Close menu"
-            className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 transition-colors cursor-pointer"
+            className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 active:scale-95 transition-all touch-manipulation cursor-pointer"
           >
             <X size={22} />
           </button>
@@ -127,7 +118,7 @@ export default function MobileMenu({ isOpen, onClose, categories }: MobileMenuPr
           <div className="border border-zinc-200 rounded-xl overflow-hidden bg-white shadow-2xs">
             <button
               onClick={() => setIsCoursesOpen(!isCoursesOpen)}
-              className="w-full flex items-center justify-between p-3 font-semibold text-xs sm:text-sm text-prime-dark bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="w-full flex items-center justify-between p-3 font-semibold text-xs sm:text-sm text-prime-dark bg-slate-50 hover:bg-slate-100 transition-colors touch-manipulation cursor-pointer"
             >
               <div className="flex items-center gap-2">
                 <GraduationCap className="text-prime text-base" size={18} />
@@ -160,7 +151,7 @@ export default function MobileMenu({ isOpen, onClose, categories }: MobileMenuPr
                       {/* Category Header Button */}
                       <button
                         onClick={() => toggleCategory(category.slug)}
-                        className={`w-full flex items-center justify-between px-3 py-2.5 text-left text-xs font-semibold transition-colors cursor-pointer ${isExpanded
+                        className={`w-full flex items-center justify-between px-3 py-2.5 text-left text-xs font-semibold transition-colors touch-manipulation cursor-pointer ${isExpanded
                           ? 'bg-prime/5 text-prime'
                           : 'text-zinc-800 hover:bg-zinc-50'
                           }`}
@@ -198,12 +189,12 @@ export default function MobileMenu({ isOpen, onClose, categories }: MobileMenuPr
                               const duration = course.courseCard?.courseDuration;
 
                               return (
-                                <Link
-                                  key={course.slug}
-                                  href={`/${category.slug}/${course.slug}`}
-                                  onClick={onClose}
-                                  className="flex items-start gap-2.5 p-2 rounded-lg bg-white border border-zinc-200/80 hover:border-prime/50 hover:bg-prime/5 transition-all block"
-                                >
+                                  <Link
+                                    key={course.slug}
+                                    href={`/${category.slug}/${course.slug}`}
+                                    onClick={handleClose}
+                                    className="flex items-start gap-2.5 p-2 rounded-lg bg-white border border-zinc-200/80 hover:border-prime/50 hover:bg-prime/5 transition-all block"
+                                  >
                                   {/* Icon */}
                                   <div className="w-7 h-7 rounded bg-prime/5 flex items-center justify-center shrink-0 mt-0.5 overflow-hidden">
                                     {iconUrl ? (
@@ -245,7 +236,7 @@ export default function MobileMenu({ isOpen, onClose, categories }: MobileMenuPr
                           {/* View All Category Link */}
                           <Link
                             href={`/${category.slug}`}
-                            onClick={onClose}
+                            onClick={handleClose}
                             className="block text-center text-[11px] font-semibold text-prime hover:underline py-1"
                           >
                             View All {category.name} &rarr;
@@ -269,7 +260,7 @@ export default function MobileMenu({ isOpen, onClose, categories }: MobileMenuPr
                 <Link
                   key={item.link}
                   href={item.link}
-                  onClick={onClose}
+                  onClick={handleClose}
                   className="block px-3 py-2 text-xs font-medium text-zinc-700 hover:text-prime hover:bg-slate-50 rounded-lg transition-colors"
                 >
                   {item.name}
@@ -285,7 +276,7 @@ export default function MobileMenu({ isOpen, onClose, categories }: MobileMenuPr
             href="https://wa.me/919513001835"
             target="_blank"
             rel="noopener noreferrer"
-            onClick={onClose}
+            onClick={handleClose}
             className="flex items-center gap-2 text-prime font-semibold hover:opacity-80"
           >
             <MessageSquare size={15} className="text-prime-yellow" />
@@ -294,7 +285,7 @@ export default function MobileMenu({ isOpen, onClose, categories }: MobileMenuPr
 
           <Link
             href="mailto:reachus@nivlearn.com"
-            onClick={onClose}
+            onClick={handleClose}
             className="flex items-center gap-1.5 text-zinc-600 hover:text-prime"
           >
             <Headphones size={15} className="text-zinc-500" />

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Montserrat } from "next/font/google";
 import "./globals.css";
 import "./sprits.css";
@@ -37,6 +37,12 @@ const RICH_TEXT_CDN_ORIGIN = (() => {
     return "https://cloud-storage.skilldeck.net";
   }
 })();
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

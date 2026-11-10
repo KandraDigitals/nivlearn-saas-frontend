@@ -64,12 +64,12 @@ export function prefetchCategoryCourses(slug: string): void {
         () => {
           fetchCoursesForCategory(slug);
         },
-        { timeout: 2000 }
+        { timeout: 4000 }
       );
     } else {
       setTimeout(() => {
         fetchCoursesForCategory(slug);
-      }, 1000);
+      }, 2500);
     }
   }
 }
