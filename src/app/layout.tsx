@@ -6,7 +6,7 @@ import NavBar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { LeadModalProvider } from "@/context/LeadModalContext";
 import GeoLocationInitializer from "@/context/GeoLocationInitializer";
-import { LeadModal } from "@/components/forms";
+import { LeadModal, SiteLevelPopupTrigger } from "@/components/forms";
 import { getCategories, getCourseOptions } from "@/services/catalog.service";
 import { getRibbons } from "@/services/content.service";
 import DynamicScripts from "@/components/logics/DynamicScripts";
@@ -100,6 +100,7 @@ export default async function RootLayout({
           <Footer />
           <Ribbons type="footer" response={ribbonsResponse} />
           <LeadModal courses={courseOptions} />
+          <SiteLevelPopupTrigger />
         </LeadModalProvider>
       </body>
     </html>

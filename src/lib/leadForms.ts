@@ -117,6 +117,15 @@ export const LEAD_FORMS = {
     defaultValues: { leadSource: 'accreditations-page', purpose: 'Upskilling' },
     config: { showCourse: true, showMessage: true },
   },
+
+  /** Site-level smart popup (exit-intent / scroll / timer). */
+  siteLevel: {
+    formTitle: 'Connect with a Course Advisor',
+    formDescription: 'Have questions about course syllabus, batch schedules, or certifications? A learning advisor will connect with you within 15 minutes.',
+    defaultValues: { leadSource: 'site-level-advisor-popup', purpose: 'Upskilling / Certification' },
+    config: { showCourse: true, showMessage: false },
+    submitButtonText: 'Request Free Advisory Callback',
+  },
 } satisfies Record<string, LeadModalConfig>;
 
 export type LeadFormKey = keyof typeof LEAD_FORMS;
