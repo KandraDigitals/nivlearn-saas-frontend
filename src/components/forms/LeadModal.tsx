@@ -334,6 +334,10 @@ export default function LeadModal({ courses }: LeadModalProps = {}) {
                                 }
                                 onSuccess={() => {
                                     setIsSuccess(true);
+                                    try {
+                                        localStorage.setItem('nivlearn_lead_submitted', 'true');
+                                        sessionStorage.setItem('nivlearn_site_popup_dismissed', 'true');
+                                    } catch {}
                                     if (modalConfig.downloadUrl && typeof window !== 'undefined') {
                                         try {
                                             const link = document.createElement('a');

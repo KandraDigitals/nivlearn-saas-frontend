@@ -129,7 +129,7 @@ export default function CourseBenefits({ course }: { course: CourseDetail }) {
 
   return (
     <section id="benefits" className="relative bg-light py-12 lg:py-16 border-y border-border-muted/50">
-      <div className="section-container relative z-10 max-w-6xl mx-auto px-4 sm:px-6">
+      <div className="section-container relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
 
           {/* ── Left Column: Context, Tabs & CTA ── */}
